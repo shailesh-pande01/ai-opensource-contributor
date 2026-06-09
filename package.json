@@ -1,0 +1,21 @@
+{
+  "name": "ai-contributor",
+  "version": "1.0.0",
+  "description": "A simple AI contributor for GitHub repositories",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["ai", "github", "open-source", "automation"],
+  "author": "Shailesh Pande",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

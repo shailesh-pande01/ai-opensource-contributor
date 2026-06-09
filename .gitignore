@@ -1,0 +1,16 @@
+# Dependencies — these are downloaded fresh, no need to upload 100MB of code
+node_modules/
+
+# Secrets — CRITICAL: never upload your API keys
+.env
+
+# Operating system files — noise you don't need
+.DS_Store
+Thumbs.db
+
+# Logs — generated automatically, not part of your code
+*.log
+npm-debug.log*
+
+# Runtime files
+*.pid

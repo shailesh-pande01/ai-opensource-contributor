@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Open Source Contributor</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════════════════════════ -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">AI Contributor</span>
+      </div>
+      <div class="ai-status" id="aiStatus">
+        <!-- Filled by JavaScript -->
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       STAGE PROGRESS BAR
+       Shows which of the 5 stages you're on
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="stages-bar">
+    <div class="stage active" id="stage-1">
+      <div class="stage-number">1</div>
+      <div class="stage-label">Fetch</div>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage" id="stage-2">
+      <div class="stage-number">2</div>
+      <div class="stage-label">Analyze</div>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage" id="stage-3">
+      <div class="stage-number">3</div>
+      <div class="stage-label">Files</div>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage" id="stage-4">
+      <div class="stage-number">4</div>
+      <div class="stage-label">Prompt</div>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage" id="stage-5">
+      <div class="stage-number">5</div>
+      <div class="stage-label">PR</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MAIN CONTENT AREA
+  ═══════════════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- ─── STAGE 1: Repository Input ───────────────────────── -->
+    <section class="card" id="section-input">
+      <h2 class="card-title">
+        <span class="card-icon">🔗</span>
+        GitHub Repository
+      </h2>
+      <p class="card-subtitle">
+        Enter any public GitHub repository URL to get started.
+      </p>
+
+      <div class="input-group">
+        <input
+          type="text"
+          id="repoUrlInput"
+          class="repo-input"
+          placeholder="https://github.com/facebook/react"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="analyzeBtn" class="btn btn-primary">
+          <span class="btn-text">Analyze Repository</span>
+          <span class="btn-loading" style="display:none">Loading...</span>
+        </button>
+      </div>
+
+      <!-- Quick example links -->
+      <div class="examples">
+        <span class="examples-label">Try these:</span>
+        <button class="example-link" onclick="fillExample('https://github.com/expressjs/express')">expressjs/express</button>
+        <button class="example-link" onclick="fillExample('https://github.com/axios/axios')">axios/axios</button>
+        <button class="example-link" onclick="fillExample('https://github.com/lodash/lodash')">lodash/lodash</button>
+      </div>
+
+      <!-- Error display -->
+      <div id="inputError" class="error-box" style="display:none"></div>
+    </section>
+
+    <!-- ─── STAGE 2: Repository Info ────────────────────────── -->
+    <section class="card" id="section-repo" style="display:none">
+      <h2 class="card-title">
+        <span class="card-icon">📦</span>
+        Repository Info
+      </h2>
+
+      <div id="repoInfo" class="repo-info-grid">
+        <!-- Filled by JavaScript -->
+      </div>
+    </section>
+
+    <!-- ─── STAGE 3: Issues List ─────────────────────────────── -->
+    <section class="card" id="section-issues" style="display:none">
+      <h2 class="card-title">
+        <span class="card-icon">🐛</span>
+        Open Issues
+        <span class="badge" id="issueCount">0</span>
+      </h2>
+
+      <div class="issues-controls">
+        <input
+          type="text"
+          id="issueSearch"
+          class="search-input"
+          placeholder="Search issues..."
+        />
+      </div>
+
+      <div id="issuesList" class="issues-list">
+        <!-- Filled by JavaScript -->
+      </div>
+    </section>
+
+    <!-- ─── STAGE 4: Analyze (Day 3) ─────────────────────────── -->
+    <section class="card card-locked" id="section-analyze" style="display:none">
+      <h2 class="card-title">
+        <span class="card-icon">🔍</span>
+        Stack Analysis
+        <span class="coming-soon-badge">Day 3</span>
+      </h2>
+      <p class="card-subtitle">
+        Repository structure and technology stack detection.
+        This feature will be built on Day 3.
+      </p>
+    </section>
+
+    <!-- ─── STAGE 5: Prompt (Day 5) ──────────────────────────── -->
+    <section class="card card-locked" id="section-prompt" style="display:none">
+      <h2 class="card-title">
+        <span class="card-icon">🤖</span>
+        AI Prompt Generator
+        <span class="coming-soon-badge">Day 5</span>
+      </h2>
+      <p class="card-subtitle">
+        Select an issue above, then generate a prompt for Claude Chat.
+        This feature will be built on Day 5.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FOOTER
+  ═══════════════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <span>AI Open Source Contributor</span>
+    <span>·</span>
+    <span>Zero API Cost Edition</span>
+    <span>·</span>
+    <a href="/health" target="_blank">Server Health</a>
+  </footer>
+
+  <!-- Load our JavaScript (at the bottom so HTML loads first) -->
+  <script src="/js/app.js"></script>
+
+</body>
+</html>

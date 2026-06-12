@@ -1,11 +1,16 @@
 require("dotenv").config();
 const express = require("express");
+const path = require("path");
 const healthRoutes = require("./src/routes/health.routes");
+const repoRoutes = require("./src/routes/repo.routes");
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+
 app.use("/health", healthRoutes);
+app.use("/api/repo", repoRoutes);
 
 
 
@@ -22,13 +27,15 @@ app.listen(PORT, () => {
 });
 
 app.use((req, res) => {
-  res.status(404).json({
-    status: "error",
-    message: `Route ${req.originalUrl} not found`,
-    availableRoutes: [
-      "GET /health"
-    ]
-  });
+  // If it's an API request, return JSON error
+  if (req.originalUrl.startsWith("/api/")) {
+    return res.status(404).json({
+      success: false,
+      message: `API route ${req.originalUrl} not found`,
+    });
+  }
+  // If it's a browser request, serve the frontend
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 module.exports = app;

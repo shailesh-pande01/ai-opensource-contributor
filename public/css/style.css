@@ -469,3 +469,108 @@ a:hover { text-decoration: underline; }
   .stages-bar { gap: 4px; }
   .stage-label { display: none; }
 }
+
+/* ─── Stack Analysis ─────────────────────────────────────────────────────── */
+.analyze-loading {
+  color: var(--text-muted);
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+.analyze-row { margin-bottom: 18px; }
+.analyze-row:last-child { margin-bottom: 0; }
+
+.analyze-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.text-muted {
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.badge-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tech-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  padding: 4px 12px;
+  color: var(--text);
+}
+
+/* Category-specific colors */
+.tech-badge.lang       { border-color: rgba(31, 111, 235, 0.4);  color: #58a6ff; }
+.tech-badge.frontend   { border-color: rgba(35, 134, 54, 0.4);   color: #3fb950; }
+.tech-badge.backend    { border-color: rgba(63, 185, 80, 0.4);   color: #56d364; }
+.tech-badge.fullstack  { border-color: rgba(35, 134, 54, 0.4);   color: #3fb950; }
+.tech-badge.testing    { border-color: rgba(163, 113, 247, 0.4); color: #a371f7; }
+.tech-badge.build-tool { border-color: rgba(210, 153, 34, 0.4);  color: var(--warning); }
+
+.tech-badge.type {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+
+.indicator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 20px;
+  font-size: 12px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+}
+
+.indicator-badge.yes { color: #3fb950; border-color: rgba(63, 185, 80, 0.4); }
+.indicator-badge.no  { color: var(--text-muted); opacity: 0.5; }
+
+.key-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.key-file-item {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.folder-structure {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.folder-item {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  color: var(--text-muted);
+}
+
+.folder-item.is-folder { color: #58a6ff; }

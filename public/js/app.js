@@ -16,6 +16,7 @@ const state = {
   repoInfo: null,
   issues: [],
   selectedIssue: null,
+  repoProfile: null, // ← NEW: stack analysis result
 };
 
 // ─── DOM References ───────────────────────────────────────────────────────────
@@ -35,6 +36,16 @@ const elements = {
   // Content areas
   repoInfo:       document.getElementById("repoInfo"),
   issuesList:     document.getElementById("issuesList"),
+  // Stack analysis elements ← NEW
+  analyzeLoading: document.getElementById("analyzeLoading"),
+  analyzeContent: document.getElementById("analyzeContent"),
+  languagesBadges: document.getElementById("languagesBadges"),
+  projectTypeBadge: document.getElementById("projectTypeBadge"),
+  frameworksBadges: document.getElementById("frameworksBadges"),
+  indicatorsBadges: document.getElementById("indicatorsBadges"),
+  keyFilesList: document.getElementById("keyFilesList"),
+  folderStructure: document.getElementById("folderStructure"),
+  totalFilesCount: document.getElementById("totalFilesCount"),
 };
 
 // ─── Initialization ───────────────────────────────────────────────────────────
@@ -124,6 +135,9 @@ async function handleAnalyze() {
     // Update stage progress
     setStageActive(2);
 
+    // ← NEW: kick off stack analysis (runs independently, shows its own loading state)
+    loadStackAnalysis(url);
+
   } catch (error) {
     showError(error.message);
   } finally {
@@ -170,6 +184,101 @@ async function fetchIssues(repoUrl) {
   }
 
   return result.data.issues;
+}
+
+// ─── Stack Analysis ────────────────────────────────────────────────────────
+
+/**
+ * Fetches the Repo Profile from /api/repo/analyze and renders it.
+ * Runs separately from the main fetch because it's slower
+ * (it has to fetch the entire file tree + manifest files).
+ */
+async function loadStackAnalysis(repoUrl) {
+  // Reset to loading state
+  show(elements.analyzeLoading);
+  hide(elements.analyzeContent);
+  elements.analyzeLoading.textContent = "Analyzing repository structure...";
+
+  try {
+    const response = await fetch("/api/repo/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repoUrl }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    state.repoProfile = result.data;
+    renderStackAnalysis(result.data);
+
+    hide(elements.analyzeLoading);
+    show(elements.analyzeContent);
+
+  } catch (error) {
+    elements.analyzeLoading.textContent = `Could not analyze stack: ${error.message}`;
+  }
+}
+
+/**
+ * Renders the Repo Profile object into the Stack Analysis card.
+ */
+function renderStackAnalysis(profile) {
+  // ── Languages ─────────────────────────────────────────────────────────
+  elements.languagesBadges.innerHTML = profile.languages.length > 0
+    ? profile.languages.map(lang => `<span class="tech-badge lang">${lang}</span>`).join("")
+    : `<span class="text-muted">No language manifest detected</span>`;
+
+  // ── Project Type ──────────────────────────────────────────────────────
+  elements.projectTypeBadge.innerHTML =
+    `<span class="tech-badge type">${formatProjectType(profile.projectType)}</span>`;
+
+  // ── Frameworks ────────────────────────────────────────────────────────
+  elements.frameworksBadges.innerHTML = profile.frameworks.length > 0
+    ? profile.frameworks.map(fw => `<span class="tech-badge ${fw.category}">${fw.name}</span>`).join("")
+    : `<span class="text-muted">No frameworks detected from dependencies</span>`;
+
+  // ── Indicators ────────────────────────────────────────────────────────
+  const indicatorList = [
+    { key: "hasCI",         label: "CI/CD" },
+    { key: "hasDockerfile", label: "Docker" },
+    { key: "hasTests",      label: "Tests" },
+    { key: "hasDocs",       label: "Docs" },
+  ];
+
+  elements.indicatorsBadges.innerHTML = indicatorList.map(ind => {
+    const present = profile.indicators[ind.key];
+    return `<span class="indicator-badge ${present ? "yes" : "no"}">${present ? "✓" : "✗"} ${ind.label}</span>`;
+  }).join("");
+
+  // ── Key Files ─────────────────────────────────────────────────────────
+  elements.keyFilesList.innerHTML = profile.keyFiles.length > 0
+    ? profile.keyFiles.map(file => `<div class="key-file-item">${file}</div>`).join("")
+    : `<span class="text-muted">No standard config files found at root</span>`;
+
+  // ── Folder Structure ─────────────────────────────────────────────────
+  elements.totalFilesCount.textContent = `(${profile.stats.totalFiles} files total${profile.stats.truncated ? ", truncated" : ""})`;
+
+  const items = profile.folderStructure.slice(0, 30);
+  const remainder = profile.folderStructure.length - items.length;
+
+  elements.folderStructure.innerHTML = items.map(item => {
+    const isFolder = item.endsWith("/");
+    return `<span class="folder-item ${isFolder ? "is-folder" : ""}">${item}</span>`;
+  }).join("") + (remainder > 0 ? `<span class="folder-item">+${remainder} more</span>` : "");
+}
+
+/**
+ * Converts "fullstack-framework" → "Fullstack Framework"
+ */
+function formatProjectType(type) {
+  return type
+    .split("-")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 // ─── Render Functions ─────────────────────────────────────────────────────────

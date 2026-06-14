@@ -18,6 +18,9 @@ const {
   getContributors,
   getRateLimit,
   getAIStatus,
+  getTree,        // ← NEW
+  getFile,        // ← NEW
+  analyzeStack,   // ← NEW
 } = require("../controllers/repo.controller");
 
 const router = Router();
@@ -33,6 +36,18 @@ router.post("/issues", getIssues);
 // POST /api/repo/contributors
 // Body: { repoUrl: "..." }
 router.post("/contributors", getContributors);
+
+// POST /api/repo/tree
+// Body: { repoUrl: "...", branch: "main" (optional) }
+router.post("/tree", getTree);
+
+// POST /api/repo/file
+// Body: { repoUrl: "...", path: "package.json", branch: "main" (optional) }
+router.post("/file", getFile);
+
+// POST /api/repo/analyze
+// Body: { repoUrl: "...", branch: "main" (optional) }
+router.post("/analyze", analyzeStack);
 
 // GET /api/repo/rate-limit
 // No body needed

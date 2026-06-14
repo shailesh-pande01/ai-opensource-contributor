@@ -167,6 +167,147 @@ const getContributors = async (owner, repo, limit = 10) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// REPOSITORY TREE & FILE CONTENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches the full recursive file tree of a repository — every file path,
+ * in a single API call.
+ *
+ * GitHub API endpoint: GET /repos/{owner}/{repo}/git/trees/{branch}?recursive=1
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} [branch] - if not provided, uses the repo's default branch
+ * @returns {Object} - { branch, totalFiles, truncated, files: [{path, size, sha}] }
+ */
+const getRepoTree = async (owner, repo, branch) => {
+  try {
+    // If no branch was given, find the default branch first
+    // (reuses the function we already wrote in Day 2)
+    let targetBranch = branch;
+    if (!targetBranch) {
+      const repoInfo = await getRepoInfo(owner, repo);
+      targetBranch = repoInfo.defaultBranch;
+    }
+
+    // recursive: "true" must be a STRING, not a boolean — quirk of this API
+    const { data } = await octokit.git.getTree({
+      owner,
+      repo,
+      tree_sha: targetBranch, // GitHub resolves branch names to their tip commit's tree
+      recursive: "true",
+    });
+
+    // data.tree contains BOTH files ("blob") and folders ("tree")
+    // We only want files
+    const files = data.tree
+      .filter((item) => item.type === "blob")
+      .map((item) => ({
+        path: item.path,
+        size: item.size || 0,
+        sha: item.sha,
+      }));
+
+    return {
+      branch: targetBranch,
+      totalFiles: files.length,
+      truncated: data.truncated, // true only for VERY large repos
+      files,
+    };
+  } catch (error) {
+    throw handleGitHubError(error, owner, repo);
+  }
+};
+
+/**
+ * Fetches and decodes the content of ONE file.
+ *
+ * GitHub API endpoint: GET /repos/{owner}/{repo}/contents/{path}
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} filePath - e.g. "package.json" or "src/index.js" (NO leading slash)
+ * @param {string} [branch]
+ * @returns {Object} - { path, content (decoded text), size, sha }
+ */
+const getFileContent = async (owner, repo, filePath, branch) => {
+  try {
+    const { data } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path: filePath,
+      ref: branch, // optional — which branch/commit to read from
+    });
+
+    // If the path points to a FOLDER, GitHub returns an ARRAY, not an object
+    if (Array.isArray(data)) {
+      throw new Error(`"${filePath}" is a directory, not a file`);
+    }
+
+    // Files over 1MB don't include "content" — GitHub gives a download_url instead.
+    // We don't handle that case yet (it's rare for the files we care about).
+    if (!data.content) {
+      throw new Error(`"${filePath}" is too large to fetch directly (over 1MB)`);
+    }
+
+    // Decode: base64 string → raw bytes → readable UTF-8 text
+    const decodedContent = Buffer.from(data.content, "base64").toString("utf-8");
+
+    return {
+      path: data.path,
+      content: decodedContent,
+      size: data.size,
+      sha: data.sha,
+    };
+  } catch (error) {
+    if (error.status === 404) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+    // Re-throw our own custom errors (directory/too-large) as-is
+    if (error.message.includes("directory") || error.message.includes("too large")) {
+      throw error;
+    }
+    throw handleGitHubError(error, owner, repo);
+  }
+};
+
+/**
+ * Fetches MULTIPLE files at once. Files that don't exist are silently skipped
+ * (this is intentional — we're CHECKING which manifest files exist).
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string[]} filePaths
+ * @param {string} [branch]
+ * @returns {Object} - { "package.json": "...content...", "Cargo.toml": "..." }
+ *                      only includes keys for files that were FOUND
+ */
+const getMultipleFiles = async (owner, repo, filePaths, branch) => {
+  const results = {};
+
+  // For each path, try to fetch it. If it fails (doesn't exist), mark found:false.
+  // Promise.all still waits for ALL of these — but none of them can "crash" the group
+  // because each one catches its own errors internally.
+  const promises = filePaths.map(async (filePath) => {
+    try {
+      const file = await getFileContent(owner, repo, filePath, branch);
+      return { filePath, content: file.content, found: true };
+    } catch {
+      return { filePath, content: null, found: false };
+    }
+  });
+
+  const settled = await Promise.all(promises);
+
+  settled.forEach(({ filePath, content, found }) => {
+    if (found) results[filePath] = content;
+  });
+
+  return results;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RATE LIMIT CHECK
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -252,4 +393,7 @@ module.exports = {
   getIssues,
   getContributors,
   getRateLimit,
+  getRepoTree,        // ← NEW
+  getFileContent,     // ← NEW
+  getMultipleFiles,   // ← NEW
 };

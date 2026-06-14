@@ -15,6 +15,8 @@ const githubService = require("../services/github.service");
 const aiService = require("../services/ai.service");
 const { parseGitHubURL } = require("../utils/parser.utils");
 
+const stackDetector = require("../services/stackDetector.service");
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET REPOSITORY INFO
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,10 +176,102 @@ const getAIStatus = (req, res) => {
   return res.status(200).json({ success: true, data: status });
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET FILE TREE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Handles: POST /api/repo/tree
+ * Request body: { "repoUrl": "...", "branch": "main" (optional) }
+ */
+const getTree = async (req, res) => {
+  try {
+    const { repoUrl, branch } = req.body;
+
+    if (!repoUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a repoUrl",
+      });
+    }
+
+    const { owner, repo } = parseGitHubURL(repoUrl);
+    const tree = await githubService.getRepoTree(owner, repo, branch);
+
+    return res.status(200).json({ success: true, data: tree });
+  } catch (error) {
+    console.error("[getTree] Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET SINGLE FILE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Handles: POST /api/repo/file
+ * Request body: { "repoUrl": "...", "path": "package.json", "branch": "main" (optional) }
+ */
+const getFile = async (req, res) => {
+  try {
+    const { repoUrl, path: filePath, branch } = req.body;
+
+    if (!repoUrl || !filePath) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide repoUrl and path",
+        example: { repoUrl: "https://github.com/owner/repo", path: "package.json" },
+      });
+    }
+
+    const { owner, repo } = parseGitHubURL(repoUrl);
+    const file = await githubService.getFileContent(owner, repo, filePath, branch);
+
+    return res.status(200).json({ success: true, data: file });
+  } catch (error) {
+    console.error("[getFile] Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANALYZE STACK
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Handles: POST /api/repo/analyze
+ * Request body: { "repoUrl": "...", "branch": "main" (optional) }
+ * Response: { "success": true, "data": <Repo Profile> }
+ */
+const analyzeStack = async (req, res) => {
+  try {
+    const { repoUrl, branch } = req.body;
+
+    if (!repoUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a repoUrl",
+      });
+    }
+
+    const { owner, repo } = parseGitHubURL(repoUrl);
+    const profile = await stackDetector.analyzeRepository(owner, repo, branch);
+
+    return res.status(200).json({ success: true, data: profile });
+  } catch (error) {
+    console.error("[analyzeStack] Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getRepoInfo,
   getIssues,
   getContributors,
   getRateLimit,
   getAIStatus,
+  getTree,        // ← NEW
+  getFile,        // ← NEW
+  analyzeStack,   // ← NEW
 };

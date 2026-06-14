@@ -131,16 +131,58 @@
     </section>
 
     <!-- ─── STAGE 4: Analyze (Day 3) ─────────────────────────── -->
-    <section class="card card-locked" id="section-analyze" style="display:none">
+    <!-- ─── STAGE 4: Stack Analysis ──────────────────────────── -->
+    <section class="card" id="section-analyze" style="display:none">
       <h2 class="card-title">
         <span class="card-icon">🔍</span>
         Stack Analysis
-        <span class="coming-soon-badge">Day 3</span>
       </h2>
       <p class="card-subtitle">
-        Repository structure and technology stack detection.
-        This feature will be built on Day 3.
+        Automatically detected technologies, frameworks, and project structure.
       </p>
+
+      <!-- Shown while fetching tree + manifest files -->
+      <div id="analyzeLoading" class="analyze-loading">
+        Analyzing repository structure...
+      </div>
+
+      <!-- Shown once analysis completes -->
+      <div id="analyzeContent" style="display:none">
+
+        <div class="analyze-row">
+          <div class="analyze-label">Languages</div>
+          <div class="badge-group" id="languagesBadges"></div>
+        </div>
+
+        <div class="analyze-row">
+          <div class="analyze-label">Project Type</div>
+          <div class="badge-group" id="projectTypeBadge"></div>
+        </div>
+
+        <div class="analyze-row">
+          <div class="analyze-label">Frameworks &amp; Tools</div>
+          <div class="badge-group" id="frameworksBadges"></div>
+        </div>
+
+        <div class="analyze-row">
+          <div class="analyze-label">Project Setup</div>
+          <div class="badge-group" id="indicatorsBadges"></div>
+        </div>
+
+        <div class="analyze-row">
+          <div class="analyze-label">Key Files</div>
+          <div class="key-files-list" id="keyFilesList"></div>
+        </div>
+
+        <div class="analyze-row">
+          <div class="analyze-label">
+            Folder Structure
+            <span class="text-muted" id="totalFilesCount"></span>
+          </div>
+          <div class="folder-structure" id="folderStructure"></div>
+        </div>
+
+      </div>
     </section>
 
     <!-- ─── STAGE 5: Prompt (Day 5) ──────────────────────────── -->

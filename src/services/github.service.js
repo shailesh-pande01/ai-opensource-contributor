@@ -167,6 +167,58 @@ const getContributors = async (owner, repo, limit = 10) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SINGLE ISSUE BY NUMBER
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches a single issue by its number.
+ * Used by the test script and can be reused in Day 5+.
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {number} issueNumber
+ * @returns {Object} - cleaned issue object (same shape as getIssues results)
+ */
+const getIssueByNumber = async (owner, repo, issueNumber) => {
+  try {
+    const { data } = await octokit.issues.get({
+      owner,
+      repo,
+      issue_number: Number(issueNumber),
+    });
+
+    // Return the same shape as getIssues() for consistency
+    return {
+      number: data.number,
+      title: data.title,
+      body: data.body || "",
+      state: data.state,
+      labels: data.labels.map((l) => ({
+        name: l.name,
+        color: l.color,
+        description: l.description,
+      })),
+      user: {
+        login: data.user.login,
+        avatar: data.user.avatar_url,
+      },
+      comments: data.comments,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      url: data.html_url,
+    };
+  } catch (error) {
+    if (error.status === 404) {
+      throw new Error(
+        `Issue #${issueNumber} not found in ${owner}/${repo}. ` +
+        `Make sure the issue number is correct and the repo is public.`
+      );
+    }
+    throw handleGitHubError(error, owner, repo);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // REPOSITORY TREE & FILE CONTENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -391,9 +443,10 @@ const handleGitHubError = (error, owner, repo) => {
 module.exports = {
   getRepoInfo,
   getIssues,
+  getIssueByNumber, // ← NEW
   getContributors,
   getRateLimit,
-  getRepoTree,        // ← NEW
-  getFileContent,     // ← NEW
-  getMultipleFiles,   // ← NEW
+  getRepoTree,
+  getFileContent,
+  getMultipleFiles,
 };

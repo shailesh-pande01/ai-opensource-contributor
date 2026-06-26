@@ -16,7 +16,8 @@ const state = {
   repoInfo: null,
   issues: [],
   selectedIssue: null,
-  repoProfile: null, // ← NEW: stack analysis result
+  repoProfile: null,
+  contextPackage: null, // ← NEW: output of file retrieval (input for Day 5 prompt)
 };
 
 // ─── DOM References ───────────────────────────────────────────────────────────
@@ -46,6 +47,15 @@ const elements = {
   keyFilesList: document.getElementById("keyFilesList"),
   folderStructure: document.getElementById("folderStructure"),
   totalFilesCount: document.getElementById("totalFilesCount"),
+  // Relevant files elements ← NEW
+  filesIdle:      document.getElementById("filesIdle"),
+  filesLoading:   document.getElementById("filesLoading"),
+  filesContent:   document.getElementById("filesContent"),
+  filesError:     document.getElementById("filesError"),
+  filesCount:     document.getElementById("filesCount"),
+  keywordsBadges: document.getElementById("keywordsBadges"),
+  scoredFilesList:document.getElementById("scoredFilesList"),
+  contextStats:   document.getElementById("contextStats"),
 };
 
 // ─── Initialization ───────────────────────────────────────────────────────────
@@ -107,9 +117,11 @@ async function handleAnalyze() {
   // Update UI state
   hideError();
   setLoading(true);
-  hideAllSections();
+  
 
   try {
+
+    hideAllSections();
     // Run both API calls in parallel (faster than sequential)
     // Promise.all waits for ALL promises to resolve
     const [repoResult, issuesResult] = await Promise.all([
@@ -130,6 +142,7 @@ async function handleAnalyze() {
     show(elements.sectionRepo);
     show(elements.sectionIssues);
     show(elements.sectionAnalyze);
+    show(elements.sectionFiles); 
     show(elements.sectionPrompt);
 
     // Update stage progress
@@ -376,27 +389,25 @@ function renderIssues(issues) {
   `).join("");
 }
 
-// ─── Issue Selection ──────────────────────────────────────────────────────────
+// ─── Issue Selection ─────────────────────────────────────────────────────────
 
 function selectIssue(issueNumber) {
-  // Find the issue in state
-  const issue = state.issues.find(i => i.number === issueNumber);
+  const issue = state.issues.find((i) => i.number === issueNumber);
   if (!issue) return;
 
   state.selectedIssue = issue;
 
-  // Update visual selection
-  document.querySelectorAll(".issue-item").forEach(el => {
+  // Visual: deselect all, highlight clicked one
+  document.querySelectorAll(".issue-item").forEach((el) => {
     el.classList.remove("selected");
   });
   document.querySelector(`[data-number="${issueNumber}"]`)?.classList.add("selected");
 
-  // In Day 5, this will trigger prompt generation
-  // For now, just log it
-  console.log("Selected issue:", issue.title);
-
-  // Update stage indicator
+  // Update stage indicator to Stage 3 (Files)
   setStageActive(3);
+
+  // ← NEW: kick off relevant file loading
+  loadRelevantFiles(issue, state.repoUrl);
 }
 
 // ─── Issue Search ─────────────────────────────────────────────────────────────
@@ -452,18 +463,27 @@ function hideError() {
   elements.inputError.style.display = "none";
 }
 
+// FIXED (null-safe — if element doesn't exist, silently skips)
 function show(element) {
+  if (!element) {
+    console.warn("show() called with null element — check your element IDs");
+    return;
+  }
   element.style.display = "block";
 }
 
 function hide(element) {
+  if (!element) {
+    console.warn("hide() called with null element — check your element IDs");
+    return;
+  }
   element.style.display = "none";
 }
-
 function hideAllSections() {
   hide(elements.sectionRepo);
   hide(elements.sectionIssues);
   hide(elements.sectionAnalyze);
+  hide(elements.sectionFiles);
   hide(elements.sectionPrompt);
 }
 
@@ -514,4 +534,113 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// ─── Relevant Files ──────────────────────────────────────────────────────────
+
+/**
+ * Fetches the context package for a selected issue and renders it.
+ * Called automatically when the user clicks an issue.
+ */
+async function loadRelevantFiles(issue, repoUrl) {
+  // Reset to loading state
+  hide(elements.filesIdle);
+  hide(elements.filesContent);
+  hide(elements.filesError);
+  show(elements.filesLoading);
+  elements.filesLoading.textContent = `Finding files relevant to issue #${issue.number}...`;
+  elements.filesCount.textContent = "0";
+
+  try {
+    const response = await fetch("/api/repo/relevant-files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repoUrl, issue }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    state.contextPackage = result.data;
+    renderRelevantFiles(result.data);
+
+    hide(elements.filesLoading);
+    show(elements.filesContent);
+    elements.filesCount.textContent = result.data.stats.filesInContext;
+
+  } catch (error) {
+    hide(elements.filesLoading);
+    elements.filesError.textContent = `Could not load relevant files: ${error.message}`;
+    show(elements.filesError);
+  }
+}
+
+/**
+ * Renders the context package into the Relevant Files card.
+ */
+function renderRelevantFiles(pkg) {
+  // ── Keywords ─────────────────────────────────────────────────────────────
+  if (pkg.keywords.length === 0) {
+    elements.keywordsBadges.innerHTML =
+      `<span class="text-muted">No specific keywords extracted — issue may be too generic.</span>`;
+  } else {
+    // Show top 15 keywords. Title keywords (weight 1.5) get a special style.
+    elements.keywordsBadges.innerHTML = pkg.keywords
+      .slice(0, 15)
+      .map(({ word, weight }) => {
+        const isTitleKw = weight >= 1.5;
+        return `<span class="keyword-badge ${isTitleKw ? "title-keyword" : ""}" title="weight: ${weight}">${word}</span>`;
+      })
+      .join("");
+  }
+
+  // ── Scored Files ──────────────────────────────────────────────────────────
+  if (pkg.contextFiles.length === 0) {
+    elements.scoredFilesList.innerHTML =
+      `<div style="color: var(--text-muted); font-size: 13px; padding: 8px 0;">
+        No relevant files found. The issue keywords didn't match any file paths.
+        Try an issue with more specific technical terms.
+      </div>`;
+  } else {
+    elements.scoredFilesList.innerHTML = pkg.contextFiles.map((file) => {
+      const reasonStr = file.reasons.slice(0, 3).join(" · ");
+      return `
+        <div class="scored-file-item">
+          <div class="scored-file-score">${file.score}</div>
+          <div class="scored-file-info">
+            <div class="scored-file-path" title="${file.path}">${file.path}</div>
+            <div class="scored-file-reasons">${escapeHtml(reasonStr)}</div>
+          </div>
+          <div class="scored-file-tokens">
+            ~${file.tokenEstimate.toLocaleString()} tokens
+            ${file.wasTruncated ? `<br><span class="scored-file-truncated">truncated</span>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ── Context Stats ─────────────────────────────────────────────────────────
+  const s = pkg.stats;
+  elements.contextStats.innerHTML = `
+    <div class="context-stat">
+      <strong>${s.filesInContext}</strong>
+      <span>files in context</span>
+    </div>
+    <div class="context-stat">
+      <strong>~${s.totalTokenEstimate.toLocaleString()}</strong>
+      <span>estimated tokens</span>
+    </div>
+    <div class="context-stat">
+      <strong>${s.filesScored}</strong>
+      <span>files matched</span>
+    </div>
+    <div class="context-stat">
+      <strong>${s.totalFilesInRepo.toLocaleString()}</strong>
+      <span>total files in repo</span>
+    </div>
+  `;
 }

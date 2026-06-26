@@ -574,3 +574,130 @@ a:hover { text-decoration: underline; }
 }
 
 .folder-item.is-folder { color: #58a6ff; }
+
+
+/* ─── Relevant Files Section ─────────────────────────────────────────────── */
+.files-idle {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  gap: 10px;
+  padding: 32px;
+  text-align: center;
+}
+
+.files-idle-icon { font-size: 28px; }
+
+/* ─── Keywords ───────────────────────────────────────────────────────────── */
+.keyword-badge {
+  background: rgba(163, 113, 247, 0.12);
+  border: 1px solid rgba(163, 113, 247, 0.4);
+  border-radius: 20px;
+  color: #a371f7;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.keyword-badge.title-keyword {
+  background: rgba(163, 113, 247, 0.2);
+  border-color: rgba(163, 113, 247, 0.7);
+  font-weight: 600;
+}
+
+/* ─── Scored Files List ──────────────────────────────────────────────────── */
+.scored-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scored-file-item {
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 48px 1fr auto;
+  padding: 10px 14px;
+}
+
+.scored-file-score {
+  align-items: center;
+  background: rgba(35, 134, 54, 0.15);
+  border: 1px solid rgba(35, 134, 54, 0.3);
+  border-radius: 4px;
+  color: #3fb950;
+  display: flex;
+  font-size: 11px;
+  font-weight: 700;
+  height: 32px;
+  justify-content: center;
+  width: 44px;
+}
+
+.scored-file-info { min-width: 0; }
+
+.scored-file-path {
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scored-file-reasons {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scored-file-tokens {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.scored-file-truncated {
+  color: var(--warning);
+  font-size: 10px;
+}
+
+/* ─── Context Stats ──────────────────────────────────────────────────────── */
+.context-stats {
+  background: rgba(31, 111, 235, 0.08);
+  border: 1px solid rgba(31, 111, 235, 0.25);
+  border-radius: var(--radius);
+  color: #58a6ff;
+  display: flex;
+  font-size: 12px;
+  gap: 24px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.context-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.context-stat strong {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.context-stat span {
+  color: var(--text-muted);
+  font-size: 11px;
+}

@@ -185,6 +185,49 @@
       </div>
     </section>
 
+    <!-- ─── STAGE 3: Relevant Files ─────────────────────────────── -->
+<section class="card" id="section-files" style="display:none">
+  <h2 class="card-title">
+    <span class="card-icon">📄</span>
+    Relevant Files
+    <span class="badge" id="filesCount">0</span>
+  </h2>
+
+  <!-- When no issue is selected yet -->
+  <div id="filesIdle" class="files-idle">
+    <span class="files-idle-icon">👆</span>
+    Select an issue above to find the most relevant files for Claude to analyze.
+  </div>
+
+  <!-- Shown while fetching -->
+  <div id="filesLoading" style="display:none" class="analyze-loading">
+    Finding relevant files...
+  </div>
+
+  <!-- Shown once complete -->
+  <div id="filesContent" style="display:none">
+
+    <!-- Keywords row -->
+    <div class="analyze-row">
+      <div class="analyze-label">Extracted Keywords</div>
+      <div class="badge-group" id="keywordsBadges"></div>
+    </div>
+
+    <!-- Top scored files -->
+    <div class="analyze-row">
+      <div class="analyze-label">Most Relevant Files</div>
+      <div id="scoredFilesList" class="scored-files-list"></div>
+    </div>
+
+    <!-- Context stats row -->
+    <div class="context-stats" id="contextStats"></div>
+
+  </div>
+
+  <!-- Error state -->
+  <div id="filesError" class="error-box" style="display:none"></div>
+</section>
+
     <!-- ─── STAGE 5: Prompt (Day 5) ──────────────────────────── -->
     <section class="card card-locked" id="section-prompt" style="display:none">
       <h2 class="card-title">

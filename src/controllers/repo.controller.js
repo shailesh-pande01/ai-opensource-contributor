@@ -11,6 +11,7 @@
 // Business logic lives in services.
 // Controllers just coordinate.
 
+const fileRetriever = require("../services/fileRetriever.service");
 const githubService = require("../services/github.service");
 const aiService = require("../services/ai.service");
 const { parseGitHubURL } = require("../utils/parser.utils");
@@ -265,13 +266,82 @@ const analyzeStack = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET RELEVANT FILES (Context Package)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Handles: POST /api/repo/relevant-files
+ *
+ * Request body:
+ *   {
+ *     "repoUrl": "https://github.com/owner/repo",
+ *     "issue": {
+ *       "number": 123,
+ *       "title": "...",
+ *       "body": "...",
+ *       "labels": [{ "name": "bug" }]
+ *     }
+ *   }
+ *
+ * Response:
+ *   { "success": true, "data": <Context Package> }
+ */
+const getRelevantFiles = async (req, res) => {
+  try {
+    const { repoUrl, issue } = req.body;
+
+    // Validate inputs
+    if (!repoUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a repoUrl",
+      });
+    }
+
+    if (!issue || !issue.title) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide an issue object with at least a title",
+        example: {
+          issue: {
+            number: 123,
+            title: "Fix memory leak in auth middleware",
+            body: "When using the auth middleware...",
+            labels: [{ name: "bug" }],
+          },
+        },
+      });
+    }
+
+    const { owner, repo } = parseGitHubURL(repoUrl);
+
+    // This is the slowest endpoint so far — it fetches the file tree
+    // AND the contents of 8+ files. Log the start time for debugging.
+    const startTime = Date.now();
+    console.log(`[getRelevantFiles] Starting for ${owner}/${repo} issue #${issue.number}...`);
+
+    const contextPackage = await fileRetriever.getRelevantFiles(owner, repo, issue);
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[getRelevantFiles] Done in ${elapsed}s — ${contextPackage.stats.filesInContext} files, ~${contextPackage.stats.totalTokenEstimate} tokens`);
+
+    return res.status(200).json({ success: true, data: contextPackage });
+
+  } catch (error) {
+    console.error("[getRelevantFiles] Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getRepoInfo,
   getIssues,
   getContributors,
   getRateLimit,
   getAIStatus,
-  getTree,        // ← NEW
-  getFile,        // ← NEW
-  analyzeStack,   // ← NEW
+  getTree,
+  getFile,
+  analyzeStack,
+  getRelevantFiles, // ← NEW
 };

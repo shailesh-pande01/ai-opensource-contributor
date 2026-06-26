@@ -18,11 +18,11 @@ const {
   getContributors,
   getRateLimit,
   getAIStatus,
-  getTree,        // ← NEW
-  getFile,        // ← NEW
-  analyzeStack,   // ← NEW
+  getTree,
+  getFile,
+  analyzeStack,
+  getRelevantFiles, // ← NEW
 } = require("../controllers/repo.controller");
-
 const router = Router();
 
 // POST /api/repo/info
@@ -48,6 +48,11 @@ router.post("/file", getFile);
 // POST /api/repo/analyze
 // Body: { repoUrl: "...", branch: "main" (optional) }
 router.post("/analyze", analyzeStack);
+
+// POST /api/repo/relevant-files
+// Body: { repoUrl: "...", issue: { number, title, body, labels } }
+// Returns: Context Package with scored + fetched files
+router.post("/relevant-files", getRelevantFiles);
 
 // GET /api/repo/rate-limit
 // No body needed

@@ -11,6 +11,9 @@
 // Business logic lives in services.
 // Controllers just coordinate.
 
+const responseParser = require("../services/responseParser.service");
+const fileWriter     = require("../services/fileWriter.service");
+const promptGenerator = require("../services/promptGenerator.service");
 const fileRetriever = require("../services/fileRetriever.service");
 const githubService = require("../services/github.service");
 const aiService = require("../services/ai.service");
@@ -334,6 +337,92 @@ const getRelevantFiles = async (req, res) => {
   }
 };
 
+// ─── GENERATE PROMPT ──────────────────────────────────────────────────────────
+
+/**
+ * POST /api/repo/generate-prompt
+ * Body: { mode, issue, repoProfile, contextPackage, extras }
+ */
+const generatePrompt = (req, res) => {
+  try {
+    const { mode, issue, repoProfile, contextPackage, extras } = req.body;
+
+    if (!mode || !issue) {
+      return res.status(400).json({
+        success: false,
+        message: "mode and issue are required",
+        validModes: ["analyze", "fix", "pr"],
+      });
+    }
+
+    const result = promptGenerator.generatePrompt(
+      mode,
+      issue,
+      repoProfile,
+      contextPackage,
+      extras || {}
+    );
+
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error("[generatePrompt] Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── PARSE CLAUDE RESPONSE ────────────────────────────────────────────────────
+
+/**
+ * POST /api/repo/parse-response
+ * Body: { rawResponse: "...Claude's full response..." }
+ */
+const parseResponse = (req, res) => {
+  try {
+    const { rawResponse } = req.body;
+
+    if (!rawResponse) {
+      return res.status(400).json({
+        success: false,
+        message: "rawResponse is required in the request body",
+      });
+    }
+
+    const parsed = responseParser.parseClaudeResponse(rawResponse);
+    return res.status(200).json({ success: true, data: parsed });
+
+  } catch (error) {
+    console.error("[parseResponse] Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── APPLY CHANGES (write to output/) ─────────────────────────────────────────
+
+/**
+ * POST /api/repo/apply-changes
+ * Body: { parsedResponse: {...}, issueNumber: 123 }
+ */
+const applyChanges = (req, res) => {
+  try {
+    const { parsedResponse, issueNumber } = req.body;
+
+    if (!parsedResponse) {
+      return res.status(400).json({ success: false, message: "parsedResponse is required" });
+    }
+
+    if (!issueNumber) {
+      return res.status(400).json({ success: false, message: "issueNumber is required" });
+    }
+
+    const result = fileWriter.writeChanges(parsedResponse, issueNumber);
+    return res.status(200).json({ success: true, data: result });
+
+  } catch (error) {
+    console.error("[applyChanges] Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getRepoInfo,
   getIssues,
@@ -343,5 +432,8 @@ module.exports = {
   getTree,
   getFile,
   analyzeStack,
-  getRelevantFiles, // ← NEW
+  getRelevantFiles,
+  generatePrompt,
+  parseResponse,   // ← NEW
+  applyChanges,    // ← NEW
 };

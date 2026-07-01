@@ -18,6 +18,9 @@ const state = {
   selectedIssue: null,
   repoProfile: null,
   contextPackage: null, // ← NEW: output of file retrieval (input for Day 5 prompt)
+  currentPromptMode: "analyze",   // ← NEW
+  generatedPrompt: null,           // ← NEW
+  claudeResponse: null,   
 };
 
 // ─── DOM References ───────────────────────────────────────────────────────────
@@ -56,6 +59,31 @@ const elements = {
   keywordsBadges: document.getElementById("keywordsBadges"),
   scoredFilesList:document.getElementById("scoredFilesList"),
   contextStats:   document.getElementById("contextStats"),
+  // Prompt elements ← NEW
+promptIdle:          document.getElementById("promptIdle"),
+promptMain:          document.getElementById("promptMain"),
+promptStats:         document.getElementById("promptStats"),
+promptOutput:        document.getElementById("promptOutput"),
+promptTextarea:      document.getElementById("promptTextarea"),
+promptWarning:       document.getElementById("promptWarning"),
+modeDescription:     document.getElementById("modeDescription"),
+priorAnalysisBox:    document.getElementById("priorAnalysisBox"),
+priorAnalysisInput:  document.getElementById("priorAnalysisInput"),
+claudeResponseInput: document.getElementById("claudeResponseInput"),
+copyPromptBtn:       document.getElementById("copyPromptBtn"),
+pasteHint:           document.getElementById("pasteHint"),
+// Changes section ← NEW
+sectionChanges: document.getElementById("section-changes"),
+analysisBlock:  document.getElementById("analysisBlock"),
+analysisText:   document.getElementById("analysisText"),
+prBlock:        document.getElementById("prBlock"),
+prText:         document.getElementById("prText"),
+fileChangesBlock: document.getElementById("fileChangesBlock"),
+fileChangesList:  document.getElementById("fileChangesList"),
+applyBlock:     document.getElementById("applyBlock"),
+applyResult:    document.getElementById("applyResult"),
+changesCount:   document.getElementById("changesCount"),
+changesError:   document.getElementById("changesError"),
 };
 
 // ─── Initialization ───────────────────────────────────────────────────────────
@@ -408,6 +436,13 @@ function selectIssue(issueNumber) {
 
   // ← NEW: kick off relevant file loading
   loadRelevantFiles(issue, state.repoUrl);
+
+  // ← NEW: show prompt section
+  hide(elements.promptIdle);
+  show(elements.promptMain);
+  hide(elements.promptOutput);
+  elements.promptStats.textContent = "";
+  setPromptMode("analyze"); // reset to default mode
 }
 
 // ─── Issue Search ─────────────────────────────────────────────────────────────
@@ -485,6 +520,7 @@ function hideAllSections() {
   hide(elements.sectionAnalyze);
   hide(elements.sectionFiles);
   hide(elements.sectionPrompt);
+  hide(elements.sectionChanges);
 }
 
 // ─── Utility Functions ────────────────────────────────────────────────────────
@@ -643,4 +679,314 @@ function renderRelevantFiles(pkg) {
       <span>total files in repo</span>
     </div>
   `;
+}
+
+
+// ─── Prompt Generator ────────────────────────────────────────────────────────
+
+const MODE_DESCRIPTIONS = {
+  analyze: "🔍 Ask Claude to deeply understand the issue — what's broken, why, and which files are responsible. Do this FIRST before generating a fix.",
+  fix:     "🔧 Ask Claude to write the actual code fix. Optionally paste your Step 1 analysis above for better results.",
+  pr:      "📋 Ask Claude to write a professional Pull Request description based on the issue and changes.",
+};
+
+function setPromptMode(mode) {
+  state.currentPromptMode = mode;
+
+  // Update button styles
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+  });
+
+  // Update description
+  elements.modeDescription.textContent = MODE_DESCRIPTIONS[mode] || "";
+
+  // Show/hide prior analysis box
+  const showAnalysisBox = mode === "fix" || mode === "pr";
+  elements.priorAnalysisBox.style.display = showAnalysisBox ? "block" : "none";
+
+  // Hide output when mode changes so user regenerates
+  hide(elements.promptOutput);
+  elements.promptStats.textContent = "";
+}
+
+async function generatePrompt() {
+  if (!state.selectedIssue) {
+    alert("Please select an issue first.");
+    return;
+  }
+
+  const btn = document.getElementById("generatePromptBtn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Generating...";
+  elements.promptStats.textContent = "";
+  hide(elements.promptOutput);
+  hide(elements.promptWarning);
+
+  try {
+    const body = {
+      mode:           state.currentPromptMode,
+      issue:          state.selectedIssue,
+      repoProfile:    state.repoProfile,
+      contextPackage: state.contextPackage,
+      extras: {
+        priorAnalysis:     elements.priorAnalysisInput?.value?.trim() || "",
+        codeChangeSummary: "",
+      },
+    };
+
+    const response = await fetch("/api/repo/generate-prompt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
+
+    const data = result.data;
+    state.generatedPrompt = data.prompt;
+
+    // Fill textarea
+    elements.promptTextarea.value = data.prompt;
+
+    // Show stats
+    elements.promptStats.textContent =
+      `${data.stats.charCount.toLocaleString()} chars · ~${data.stats.tokenEstimate.toLocaleString()} tokens`;
+
+    // Show warning if needed
+    if (data.stats.warning) {
+      elements.promptWarning.textContent = "⚠️ " + data.stats.warning;
+      show(elements.promptWarning);
+    }
+
+    show(elements.promptOutput);
+    setStageActive(4);
+
+    // Reset the response box and hint
+    elements.claudeResponseInput.value = "";
+    elements.pasteHint.textContent = "";
+
+  } catch (error) {
+    elements.promptStats.textContent = "❌ " + error.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⚡ Generate Prompt";
+  }
+}
+
+async function copyPrompt() {
+  if (!state.generatedPrompt) return;
+
+  try {
+    await navigator.clipboard.writeText(state.generatedPrompt);
+    const btn = elements.copyPromptBtn;
+    btn.textContent = "✅ Copied!";
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.textContent = "📋 Copy Prompt";
+      btn.classList.remove("copied");
+    }, 2500);
+  } catch {
+    // Fallback for browsers without clipboard API
+    elements.promptTextarea.select();
+    document.execCommand("copy");
+    elements.copyPromptBtn.textContent = "✅ Copied!";
+    setTimeout(() => { elements.copyPromptBtn.textContent = "📋 Copy Prompt"; }, 2500);
+  }
+}
+
+async function processClaudeResponse() {
+  const raw = elements.claudeResponseInput?.value?.trim();
+
+  if (!raw) {
+    elements.pasteHint.textContent = "⚠️ Please paste Claude's response first.";
+    return;
+  }
+
+  elements.pasteHint.textContent = "⏳ Parsing...";
+
+  try {
+    const response = await fetch("/api/repo/parse-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawResponse: raw }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      elements.pasteHint.textContent = "❌ " + result.message;
+      return;
+    }
+
+    const parsed = result.data;
+    state.claudeResponse = parsed;
+
+    const summary = `✅ Found: ${parsed.stats.foundTags.join(", ")} · ${parsed.stats.totalFilesChanged} file(s) changed`;
+    elements.pasteHint.textContent = summary;
+
+    renderParsedResponse(parsed);
+    show(elements.sectionChanges);
+    setStageActive(5);
+
+  } catch (error) {
+    elements.pasteHint.textContent = "❌ " + error.message;
+  }
+}
+
+
+// ─── Parsed Response Rendering ────────────────────────────────────────────────
+
+function renderParsedResponse(parsed) {
+  // Reset error state
+  hide(elements.changesError);
+  elements.changesCount.textContent = parsed.stats.totalFilesChanged;
+
+  // ── Analysis ──────────────────────────────────────────────────────────────
+  if (parsed.analysis) {
+    elements.analysisText.textContent = parsed.analysis;
+    show(elements.analysisBlock);
+  } else {
+    hide(elements.analysisBlock);
+  }
+
+  // ── PR Description ────────────────────────────────────────────────────────
+  if (parsed.prDescription) {
+    elements.prText.textContent = parsed.prDescription;
+    show(elements.prBlock);
+  } else {
+    hide(elements.prBlock);
+  }
+
+  // ── File Changes ──────────────────────────────────────────────────────────
+  if (parsed.fileChanges.length > 0) {
+    elements.fileChangesList.innerHTML = parsed.fileChanges.map((file, idx) => {
+      const charInfo = file.hasCode ? `${(file.charCount || 0).toLocaleString()} chars` : "";
+      const noCodeBadge = !file.hasCode
+        ? `<span class="no-code-badge">No code extracted</span>`
+        : "";
+
+      return `
+        <div class="file-change-item">
+          <div class="file-change-header" onclick="toggleFileChange(${idx})">
+            <div>
+              <div class="file-change-path">${escapeHtml(file.path)}</div>
+              <div class="file-change-desc">${escapeHtml(file.description || "No description")}</div>
+            </div>
+            <div class="file-change-meta">
+              ${charInfo}
+              ${noCodeBadge}
+              ${file.hasCode ? "<br><span style='font-size:11px;color:var(--text-muted)'>click to expand</span>" : ""}
+            </div>
+          </div>
+          ${file.hasCode ? `
+            <div class="file-change-code" id="file-code-${idx}">
+              <pre>${escapeHtml(file.content || "")}</pre>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }).join("");
+
+    show(elements.fileChangesBlock);
+  } else {
+    hide(elements.fileChangesBlock);
+  }
+
+  // ── Apply Button ──────────────────────────────────────────────────────────
+  if (parsed.stats.filesWithCode > 0) {
+    hide(elements.applyResult);
+    show(elements.applyBlock);
+  } else {
+    hide(elements.applyBlock);
+  }
+}
+
+// ─── Toggle Collapse/Expand ───────────────────────────────────────────────────
+
+function toggleBlock(contentId, headerEl) {
+  const content = document.getElementById(contentId);
+  if (!content) return;
+
+  const isOpen = content.style.display !== "none";
+  content.style.display = isOpen ? "none" : "block";
+
+  if (headerEl) {
+    const icon = headerEl.querySelector(".toggle-icon");
+    if (icon) icon.textContent = isOpen ? "▶" : "▼";
+  }
+}
+
+function toggleFileChange(idx) {
+  const codeEl = document.getElementById(`file-code-${idx}`);
+  if (!codeEl) return;
+  codeEl.classList.toggle("open");
+}
+
+// ─── Apply Changes (Write to output/) ────────────────────────────────────────
+
+async function applyChanges() {
+  if (!state.claudeResponse) {
+    alert("No parsed response available. Paste Claude's response first.");
+    return;
+  }
+
+  if (!state.selectedIssue) {
+    alert("No issue selected.");
+    return;
+  }
+
+  const btn = document.getElementById("applyBtn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Saving...";
+
+  try {
+    const response = await fetch("/api/repo/apply-changes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parsedResponse: state.claudeResponse,
+        issueNumber: state.selectedIssue.number,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) throw new Error(result.message);
+
+    const d = result.data;
+
+    let html = `<strong>✅ ${d.totalWritten} file(s) saved to ${escapeHtml(d.outputDir)}/</strong>`;
+
+    if (d.writtenFiles.length > 0) {
+      html += d.writtenFiles.map(
+        (f) => `<div class="written-file">📄 ${escapeHtml(f.outputPath)}</div>`
+      ).join("");
+    }
+
+    if (d.skippedFiles.length > 0) {
+      html += `<div style="margin-top:8px;color:var(--warning)">Skipped (no code):</div>`;
+      html += d.skippedFiles.map(
+        (f) => `<div class="skipped-file">⚠️ ${escapeHtml(f.path)}</div>`
+      ).join("");
+    }
+
+    html += `<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">
+      Summary saved to ${escapeHtml(d.summaryPath)}
+    </div>`;
+
+    elements.applyResult.innerHTML = html;
+    show(elements.applyResult);
+
+  } catch (error) {
+    elements.applyResult.innerHTML = "❌ " + error.message;
+    elements.applyResult.style.background = "rgba(218,54,51,0.1)";
+    elements.applyResult.style.borderColor = "var(--danger)";
+    elements.applyResult.style.color = "#f85149";
+    show(elements.applyResult);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "💾 Save to output/ folder";
+  }
 }

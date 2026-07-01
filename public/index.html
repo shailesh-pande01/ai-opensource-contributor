@@ -228,19 +228,161 @@
   <div id="filesError" class="error-box" style="display:none"></div>
 </section>
 
-    <!-- ─── STAGE 5: Prompt (Day 5) ──────────────────────────── -->
-    <section class="card card-locked" id="section-prompt" style="display:none">
-      <h2 class="card-title">
-        <span class="card-icon">🤖</span>
-        AI Prompt Generator
-        <span class="coming-soon-badge">Day 5</span>
-      </h2>
-      <p class="card-subtitle">
-        Select an issue above, then generate a prompt for Claude Chat.
-        This feature will be built on Day 5.
-      </p>
-    </section>
+    <!-- ─── STAGE 5: Prompt Generator ───────────────────────────── -->
+<section class="card" id="section-prompt" style="display:none">
+  <h2 class="card-title">
+    <span class="card-icon">🤖</span>
+    AI Prompt Generator
+  </h2>
+  <p class="card-subtitle">
+    Generate a structured prompt, paste it into Claude Chat, then paste the response back.
+  </p>
 
+  <!-- Select issue reminder -->
+  <div id="promptIdle" class="files-idle">
+    <span class="files-idle-icon">👆</span>
+    Select an issue above to generate a prompt.
+  </div>
+
+  <div id="promptMain" style="display:none">
+
+    <!-- Mode selector -->
+    <div class="prompt-modes">
+      <button class="mode-btn active" data-mode="analyze" onclick="setPromptMode('analyze')">
+        🔍 Analyze Issue
+      </button>
+      <button class="mode-btn" data-mode="fix" onclick="setPromptMode('fix')">
+        🔧 Generate Fix
+      </button>
+      <button class="mode-btn" data-mode="pr" onclick="setPromptMode('pr')">
+        📋 PR Description
+      </button>
+    </div>
+
+    <!-- Mode descriptions -->
+    <div class="mode-description" id="modeDescription"></div>
+
+    <!-- Prior analysis input (shown in fix/pr mode) -->
+    <div id="priorAnalysisBox" style="display:none">
+      <label class="textarea-label">
+        📋 Paste Claude's analysis from Step 1 here (optional but improves fix quality):
+      </label>
+      <textarea
+        id="priorAnalysisInput"
+        class="response-textarea"
+        rows="6"
+        placeholder="Paste Claude's <analysis> response here..."
+      ></textarea>
+    </div>
+
+    <!-- Generate button + stats row -->
+    <div class="prompt-actions">
+      <button class="btn btn-primary" id="generatePromptBtn" onclick="generatePrompt()">
+        ⚡ Generate Prompt
+      </button>
+      <div class="prompt-stats" id="promptStats"></div>
+    </div>
+
+    <!-- Prompt output -->
+    <div id="promptOutput" style="display:none">
+      <div class="prompt-output-header">
+        <span class="textarea-label">Generated Prompt</span>
+        <div class="prompt-output-actions">
+          <button class="btn-copy" id="copyPromptBtn" onclick="copyPrompt()">
+            📋 Copy Prompt
+          </button>
+          <a id="openClaudeBtn"
+             href="https://claude.ai"
+             target="_blank"
+             rel="noopener"
+             class="btn-open-claude">
+            Open Claude Chat →
+          </a>
+        </div>
+      </div>
+
+      <textarea
+        id="promptTextarea"
+        class="prompt-textarea"
+        readonly
+        placeholder="Generated prompt will appear here..."
+      ></textarea>
+
+      <!-- Warning banner -->
+      <div id="promptWarning" class="prompt-warning" style="display:none"></div>
+
+      <!-- Step 2: Paste response back -->
+      <div class="paste-section">
+        <div class="paste-header">
+          <span class="paste-step">Step 2 — Paste Claude's Response</span>
+        </div>
+        <label class="textarea-label">
+          After Claude responds, paste the full response here:
+        </label>
+        <textarea
+          id="claudeResponseInput"
+          class="response-textarea"
+          rows="10"
+          placeholder="Paste Claude's full response here (including the XML tags like <analysis>, <code_changes>, etc.)..."
+        ></textarea>
+        <div class="paste-actions">
+          <button class="btn btn-primary" onclick="processClaudeResponse()">
+            ⚙️ Process Response
+          </button>
+          <span class="paste-hint" id="pasteHint"></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── STAGE 6: Parsed Changes ──────────────────────────────── -->
+<section class="card" id="section-changes" style="display:none">
+  <h2 class="card-title">
+    <span class="card-icon">⚙️</span>
+    Parsed Changes
+    <span class="badge" id="changesCount">0</span>
+  </h2>
+
+  <!-- Analysis block -->
+  <div id="analysisBlock" class="parsed-block" style="display:none">
+    <div class="parsed-block-header" onclick="toggleBlock('analysisContent', this)">
+      <span>🔍 Analysis</span>
+      <span class="toggle-icon">▼</span>
+    </div>
+    <div id="analysisContent" class="parsed-block-content">
+      <pre id="analysisText" class="parsed-text"></pre>
+    </div>
+  </div>
+
+  <!-- PR Description block -->
+  <div id="prBlock" class="parsed-block" style="display:none">
+    <div class="parsed-block-header" onclick="toggleBlock('prContent', this)">
+      <span>📋 PR Description</span>
+      <span class="toggle-icon">▼</span>
+    </div>
+    <div id="prContent" class="parsed-block-content">
+      <pre id="prText" class="parsed-text"></pre>
+    </div>
+  </div>
+
+  <!-- File changes -->
+  <div id="fileChangesBlock" style="display:none">
+    <div class="analyze-label" style="margin: 16px 0 10px;">Code Changes</div>
+    <div id="fileChangesList"></div>
+  </div>
+
+  <!-- Apply button -->
+  <div id="applyBlock" class="apply-block" style="display:none">
+    <button class="btn btn-primary" id="applyBtn" onclick="applyChanges()">
+      💾 Save to output/ folder
+    </button>
+    <div id="applyResult" class="apply-result" style="display:none"></div>
+  </div>
+
+  <div id="changesError" class="error-box" style="display:none"></div>
+</section>
   </main>
 
   <!-- ═══════════════════════════════════════════════════════════

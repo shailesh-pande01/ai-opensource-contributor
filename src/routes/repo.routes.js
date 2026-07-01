@@ -22,8 +22,20 @@ const {
   getFile,
   analyzeStack,
   getRelevantFiles, // ← NEW
+  generatePrompt,
+  parseResponse,   // ← NEW
+  applyChanges,
 } = require("../controllers/repo.controller");
 const router = Router();
+
+// POST /api/repo/parse-response
+router.post("/parse-response", parseResponse);
+
+// POST /api/repo/apply-changes
+router.post("/apply-changes", applyChanges);
+
+// POST /api/repo/generate-prompt
+router.post("/generate-prompt", generatePrompt);
 
 // POST /api/repo/info
 // Body: { repoUrl: "https://github.com/owner/repo" }
